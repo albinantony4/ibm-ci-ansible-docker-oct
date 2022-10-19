@@ -1,4 +1,10 @@
 pipeline {
+    environment {
+        //change the ip address of registry to your registry
+        registry = '35.80.219.57:8085/chatapp'
+        registryCredential = 'nexus-credential'
+        dockerImage = ''
+    }
     agent any
 
    // tools {
@@ -7,48 +13,37 @@ pipeline {
     //}
 
     stages {
-        stage('scm integration') {
+        stage('scm stage') {
             steps {
-               
-                git credentialsId: 'git-credentials', url: 'git@github.com:albinantony4/spring-boot-chat-app.git'
+                // Get some code from a GitHub repository
+             git 'https://github.com/gopal1409/springchat.git'  
             }
         }
-        stage('mvn build') {
+         stage('Build') {
             steps {
-               
-              sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+                // Get some code from a GitHub repository
+             sh 'mvn clean package'  
             }
         }
-        stage('unit test') {
+        stage('build image') {
             steps {
-               
-              sh 'mvn test'
-              junit '**/target/surefire-reports/*.xml'
+                // Get some code from a GitHub repository
+                script {
+                    dockerImage=docker.build registry + "$BUILD_NUMBER"
+                }
             }
         }
-        stage('checkstyle') {
+        stage('push image') {
             steps {
-               //sh 'python xunit'
-              sh 'mvn checkstyle:checkstyle'
-              recordIssues(tools: [checkStyle(pattern: '**/checkstyle-result.xml')])
-              //junit '**/target/surefire-reports/*.xml'
+                // Get some code from a GitHub repository
+                script {
+                    // This step should not normally be used in your script. Consult the inline help for details.
+                      withDockerRegistry(credentialsId: 'nexus-credential', url: 'http://35.80.219.57:8085') {
+                       dockerImage.push()
+                    }
+                }
             }
         }
-        stage('sonar') {
-            steps {
-               //sh 'python xunit'
-              sh 'mvn clean verify sonar:sonar \
-  -Dsonar.projectKey=chat-app \
-  -Dsonar.host.url=http://52.39.114.145:9000 \
-  -Dsonar.login=sqp_ad82495e756e8e97c9e6b884b30f9bdec44228af'
-              //junit '**/target/surefire-reports/*.xml'
-            }
-        }
-        stage('nexus') {
-            steps {
-              nexusArtifactUploader artifacts: [[artifactId: 'websocket-demo', classifier: '', file: 'target/websocket-demo-0.0.1-SNAPSHOT.jar', type: 'jar']], credentialsId: 'nexus-credential', groupId: 'websocket-demo', nexusUrl: '35.80.219.57:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: '0.0.1-SNAPSHOT'
-            }
-        }
+    
     }
 }
-
